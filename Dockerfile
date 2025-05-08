@@ -17,8 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app/server .
 
-RUN ls -la
-
 EXPOSE 3300
 
 CMD ["./server"]
