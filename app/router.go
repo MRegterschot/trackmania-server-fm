@@ -15,4 +15,5 @@ func SetupRoutes(app *fiber.App) {
 	app.Delete("/delete", handlers.HandleDeleteFiles)
 
 	app.Get("/scripts", handlers.HandleListScripts)
+	app.Get("/maps", handlers.HandleListMaps)
 }
