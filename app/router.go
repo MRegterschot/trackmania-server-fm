@@ -6,6 +6,10 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendString("OK")
+	})
+
 	app.Get("/UserData/*", handlers.HandleListFiles)
 	app.Post("/upload", handlers.HandleUploadFiles)
 	app.Delete("/delete", handlers.HandleDeleteFiles)
