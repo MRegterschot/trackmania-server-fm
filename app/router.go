@@ -13,6 +13,7 @@ func SetupRoutes(app *fiber.App) {
 	app.Get("/UserData/*", handlers.HandleListFiles)
 	app.Post("/upload", handlers.HandleUploadFiles)
 	app.Delete("/delete", handlers.HandleDeleteFiles)
+	app.Post("/UserData/*", handlers.HandleSaveFileText)
 
 	app.Get("/scripts", handlers.HandleListScripts)
 	app.Get("/maps", handlers.HandleListMaps)

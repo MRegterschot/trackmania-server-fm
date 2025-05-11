@@ -178,3 +178,40 @@ func HandleListFiles(c *fiber.Ctx) error {
 
 	return c.JSON(result)
 }
+
+// Handle file text save
+func HandleSaveFileText(c *fiber.Ctx) error {
+	var text string
+	if err := c.BodyParser(&text); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
+	}
+
+	encodedPath := c.Params("*")
+	relativePath, err := url.PathUnescape(encodedPath)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid path encoding")
+	}
+
+	absPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+relativePath))
+	// Prevent path traversal
+	if !strings.HasPrefix(absPath, config.AppEnv.UserDataPath) {
+		return c.Status(fiber.StatusForbidden).SendString("Invalid path")
+	}
+
+	// Create the directory if it doesn't exist
+	dir := filepath.Dir(absPath)
+
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		zap.L().Error("Error creating directory", zap.String("path", dir), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create directory")
+	}
+
+	// Write the text to the file
+	if err := os.WriteFile(absPath, []byte(text), 0644); err != nil {
+		zap.L().Error("Error writing file", zap.String("path", absPath), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to write file")
+	}
+
+	zap.L().Info("File saved", zap.String("path", absPath))
+	return c.SendString("File saved successfully")
+}
