@@ -12,7 +12,7 @@ func GetFilesRecursively(path string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		
+
 		if d.IsDir() {
 			return nil
 		}
@@ -25,10 +25,17 @@ func GetFilesRecursively(path string) ([]string, error) {
 		files = append(files, relativePath)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
 
 	return files, nil
+}
+
+func GetSizeIfFile(info fs.FileInfo) int64 {
+	if info.IsDir() {
+		return 0
+	}
+	return info.Size()
 }

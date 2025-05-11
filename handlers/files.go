@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/MRegterschot/trackmania-server-fm/config"
 	"github.com/MRegterschot/trackmania-server-fm/structs"
+	"github.com/MRegterschot/trackmania-server-fm/utils"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -160,19 +160,13 @@ func HandleListFiles(c *fiber.Ctx) error {
 	for _, entry := range entries {
 		entryInfo, _ := entry.Info()
 		result = append(result, structs.FileEntry{
-			Name:  entry.Name(),
-			Path:  filepath.Join("/UserData", relativePath, entry.Name()),
-			IsDir: entry.IsDir(),
-			Size:  getSizeIfFile(entryInfo),
+			Name:         entry.Name(),
+			Path:         filepath.Join("/UserData", relativePath, entry.Name()),
+			IsDir:        entry.IsDir(),
+			Size:         utils.GetSizeIfFile(entryInfo),
+			LastModified: entryInfo.ModTime().UTC(),
 		})
 	}
 
 	return c.JSON(result)
-}
-
-func getSizeIfFile(info fs.FileInfo) int64 {
-	if info.IsDir() {
-		return 0
-	}
-	return info.Size()
 }
