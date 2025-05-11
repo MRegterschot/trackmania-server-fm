@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,7 +131,14 @@ func HandleDeleteFiles(c *fiber.Ctx) error {
 
 // Handle file listing
 func HandleListFiles(c *fiber.Ctx) error {
-	relativePath := c.Params("*")
+	encodedPath := c.Params("*")
+
+	// Decode %20 and other URL-encoded characters
+	relativePath, err := url.PathUnescape(encodedPath)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid path encoding")
+	}
+
 	absPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+relativePath))
 
 	// Prevent path traversal
