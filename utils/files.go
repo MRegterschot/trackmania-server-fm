@@ -2,7 +2,9 @@ package utils
 
 import (
 	"io/fs"
+	"path"
 	"path/filepath"
+	"strings"
 )
 
 func GetFilesRecursively(path string) ([]string, error) {
@@ -38,4 +40,9 @@ func GetSizeIfFile(info fs.FileInfo) int64 {
 		return 0
 	}
 	return info.Size()
+}
+
+func IsProbablyDirectory(p string) bool {
+	ext := path.Ext(p)
+	return strings.HasSuffix(p, "/") || ext == ""
 }

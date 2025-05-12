@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -31,12 +32,17 @@ func HandleUploadFiles(c *fiber.Ctx) error {
 	}
 
 	var errors []string
-
+	var results []structs.FileEntry
 	for i, file := range files {
 		relativePath := paths[i]
 
-		// Set the destination path for the uploaded file
-		dest := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+relativePath))
+		// If the path is a directory, append the file name
+		if utils.IsProbablyDirectory(relativePath) {
+			relativePath = path.Join(relativePath, filepath.Base(file.Filename))
+		}
+
+		// Now safely construct the absolute destination path
+		dest := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+strings.TrimPrefix(relativePath, "/UserData/")))
 
 		// Check if the path is in the UserData directory
 		if !strings.HasPrefix(dest, config.AppEnv.UserDataPath) {
@@ -60,6 +66,22 @@ func HandleUploadFiles(c *fiber.Ctx) error {
 		}
 
 		zap.L().Info("File uploaded", zap.String("path", dest))
+
+		// Add the file entry to the results
+		fileInfo, err := os.Stat(dest)
+		if err != nil {
+			zap.L().Error("Error getting file info", zap.String("path", dest), zap.Error(err))
+			errors = append(errors, "Failed to get file info: "+file.Filename)
+			continue
+		}
+
+		results = append(results, structs.FileEntry{
+			Name:         filepath.Base(dest),
+			Path:         relativePath,
+			IsDir:        false,
+			Size:         utils.GetSizeIfFile(fileInfo),
+			LastModified: fileInfo.ModTime().UTC(),
+		})
 	}
 
 	if len(errors) > 0 {
@@ -69,7 +91,8 @@ func HandleUploadFiles(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.SendString("Files uploaded successfully")
+	// Return the list of uploaded files
+	return c.JSON(results)
 }
 
 // Handle file and directory deletion
@@ -87,7 +110,7 @@ func HandleDeleteFiles(c *fiber.Ctx) error {
 	var errors []string
 
 	for _, path := range paths {
-		// Set the destination path for the uploaded file
+		// Set the destination path for the file or directory
 		cleanPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+strings.TrimPrefix(path, "/UserData/")))
 
 		// Check if the path is in the UserData directory
