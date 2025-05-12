@@ -88,7 +88,7 @@ func HandleDeleteFiles(c *fiber.Ctx) error {
 
 	for _, path := range paths {
 		// Set the destination path for the uploaded file
-		cleanPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+path))
+		cleanPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+strings.TrimPrefix(path, "/UserData/")))
 
 		// Check if the path is in the UserData directory
 		if !strings.HasPrefix(cleanPath, config.AppEnv.UserDataPath) {
