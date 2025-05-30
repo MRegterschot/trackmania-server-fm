@@ -23,7 +23,7 @@ func SetupAndRunApp() error {
 
 	// Create a new Fiber app
 	app := fiber.New(fiber.Config{
-		BodyLimit: 25 * 1024 * 1024, // 25 MB
+		BodyLimit: 1024 * 1024 * 1024, // 1 GB limit
 	})
 
 	// Attach middleware
