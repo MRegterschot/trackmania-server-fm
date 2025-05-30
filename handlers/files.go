@@ -238,3 +238,66 @@ func HandleSaveFileText(c *fiber.Ctx) error {
 	zap.L().Info("File saved", zap.String("path", absPath))
 	return c.SendString("File saved successfully")
 }
+
+// Create a file or directory
+func HandleCreateItem(c *fiber.Ctx) error {
+	var item structs.CreateItemRequest
+	if err := c.BodyParser(&item); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
+	}
+
+	// Decode %20 and other URL-encoded characters
+	relativePath, err := url.PathUnescape(item.Path)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid path encoding")
+	}
+
+	absPath := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+relativePath))
+
+	// Prevent path traversal
+	if !strings.HasPrefix(absPath, config.AppEnv.UserDataPath) {
+		return c.Status(fiber.StatusForbidden).SendString("Invalid path")
+	}
+	
+	// Check if the item already exists
+	if _, err := os.Stat(absPath); !os.IsNotExist(err) {
+		return c.Status(fiber.StatusConflict).SendString("Item already exists")
+	}
+
+	if item.IsDir {
+		if err := os.MkdirAll(absPath, os.ModePerm); err != nil {
+			zap.L().Error("Error creating directory", zap.String("path", absPath), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create directory")
+		}
+	} else {
+		// Ensure the parent directory exists
+		dir := filepath.Dir(absPath)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			zap.L().Error("Error creating directory", zap.String("path", dir), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create directory")
+		}
+
+		if err := os.WriteFile(absPath, []byte(item.Content), 0644); err != nil {
+			zap.L().Error("Error creating file", zap.String("path", absPath), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create file")
+		}
+	}
+	
+	// Create FileEntry for the created item
+	fileInfo, err := os.Stat(absPath)
+	if err != nil {
+		zap.L().Error("Error getting file info", zap.String("path", absPath), zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get file info")
+	}
+
+	result := structs.FileEntry{
+		Name:         filepath.Base(absPath),
+		Path: 			 filepath.Join("/UserData", relativePath),
+		IsDir:        item.IsDir,
+		Size:         utils.GetSizeIfFile(fileInfo),
+		LastModified: fileInfo.ModTime().UTC(),
+	}
+
+	zap.L().Info("Item created", zap.String("path", absPath), zap.Bool("isDir", item.IsDir))
+	return c.JSON(result)
+}

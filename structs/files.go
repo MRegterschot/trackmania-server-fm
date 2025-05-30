@@ -7,5 +7,11 @@ type FileEntry struct {
 	Path         string    `json:"path"`
 	IsDir        bool      `json:"isDir"`
 	Size         int64     `json:"size,omitempty"`
-	LastModified time.Time `json:"lastModified,omitempty"`
+	LastModified time.Time `json:"lastModified,omitzero"`
+}
+
+type CreateItemRequest struct {
+	Path    string `json:"path"`
+	IsDir   bool   `json:"isDir"`
+	Content string `json:"content,omitempty"` // For files, this is the content to write
 }
