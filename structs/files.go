@@ -13,5 +13,5 @@ type FileEntry struct {
 type CreateItemRequest struct {
 	Path    string `json:"path"`
 	IsDir   bool   `json:"isDir"`
-	Content string `json:"content,omitempty"` // For files, this is the content to write
+	Content string `json:"content,omitempty"`
 }
