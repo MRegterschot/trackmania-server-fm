@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/MRegterschot/trackmania-server-fm/config"
+	"github.com/MRegterschot/trackmania-server-fm/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -31,6 +32,7 @@ func SetupAndRunApp() error {
 	app.Use(logger.New(logger.Config{
 		Format: "[${ip}]:${port} ${status} - ${method} ${path} ${latency}\n",
 	}))
+	app.Use(middleware.AuthMiddleware)
 
 	// Setup routes
 	SetupRoutes(app)

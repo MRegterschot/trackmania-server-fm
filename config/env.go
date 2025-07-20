@@ -37,6 +37,7 @@ func LoadEnv() error {
 		Port:         port,
 		LogLevel:     os.Getenv("FM_LOG_LEVEL"),
 		UserDataPath: absPath,
+		Password:     os.Getenv("FM_PASSWORD"),
 	}
 
 	return nil

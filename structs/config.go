@@ -4,4 +4,5 @@ type Env struct {
 	Port         int
 	LogLevel     string
 	UserDataPath string
+	Password     string
 }
