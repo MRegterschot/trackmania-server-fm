@@ -8,6 +8,10 @@ import (
 )
 
 func AuthMiddleware(c *fiber.Ctx) error {
+	if config.AppEnv.Password == "" {
+		return c.Next()
+	}
+
 	authHeader := c.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
