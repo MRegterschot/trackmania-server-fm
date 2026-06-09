@@ -17,5 +17,6 @@ func SetupRoutes(app *fiber.App) {
 	app.Post("/create", handlers.HandleCreateItem)
 
 	app.Get("/scripts", handlers.HandleListScripts)
+	app.Get("/plugin-scripts", handlers.HandleListPluginScripts)
 	app.Get("/maps", handlers.HandleListMaps)
 }
