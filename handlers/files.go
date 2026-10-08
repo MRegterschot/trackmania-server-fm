@@ -38,7 +38,7 @@ func HandleUploadFiles(c *fiber.Ctx) error {
 
 		// If the path is a directory, append the file name
 		if utils.IsProbablyDirectory(relativePath) {
-			relativePath = path.Join(relativePath, filepath.Base(file.Filename))
+			relativePath = path.Join(relativePath, filepath.Base(utils.DecodeUploadFilename(file.Filename)))
 		}
 
 		// Now safely construct the absolute destination path
