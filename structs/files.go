@@ -15,3 +15,12 @@ type CreateItemRequest struct {
 	IsDir   bool   `json:"isDir"`
 	Content string `json:"content,omitempty"`
 }
+
+type MoveItem struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type MoveItemsRequest struct {
+	Items []MoveItem `json:"items"`
+}

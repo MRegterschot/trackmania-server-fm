@@ -301,3 +301,99 @@ func HandleCreateItem(c *fiber.Ctx) error {
 	zap.L().Info("Item created", zap.String("path", absPath), zap.Bool("isDir", item.IsDir))
 	return c.JSON(result)
 }
+
+// Resolves a UserData-relative path to an absolute one, or false if it escapes UserData
+func resolveUserDataPath(relative string) (string, bool) {
+	decoded, err := url.PathUnescape(relative)
+	if err != nil {
+		return "", false
+	}
+
+	abs := filepath.Join(config.AppEnv.UserDataPath, filepath.Clean("/"+strings.TrimPrefix(decoded, "/UserData")))
+	if abs == filepath.Clean(config.AppEnv.UserDataPath) || !strings.HasPrefix(abs, config.AppEnv.UserDataPath+string(filepath.Separator)) {
+		return "", false
+	}
+	return abs, true
+}
+
+// Move or rename files and directories; nothing is moved unless every item is valid
+func HandleMoveItems(c *fiber.Ctx) error {
+	var req structs.MoveItemsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
+	}
+
+	if len(req.Items) == 0 {
+		return c.Status(fiber.StatusBadRequest).SendString("No items provided")
+	}
+
+	type move struct{ from, to string }
+	moves := make([]move, 0, len(req.Items))
+	targets := map[string]bool{}
+
+	for _, item := range req.Items {
+		from, ok := resolveUserDataPath(item.From)
+		if !ok {
+			return c.Status(fiber.StatusForbidden).SendString("Invalid path: " + item.From)
+		}
+		to, ok := resolveUserDataPath(item.To)
+		if !ok {
+			return c.Status(fiber.StatusForbidden).SendString("Invalid path: " + item.To)
+		}
+
+		info, err := os.Stat(from)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return c.Status(fiber.StatusNotFound).SendString("Item does not exist: " + item.From)
+			}
+			return c.Status(fiber.StatusInternalServerError).SendString("Error accessing item: " + item.From)
+		}
+
+		if from == to {
+			return c.Status(fiber.StatusBadRequest).SendString("Source and destination are the same: " + item.From)
+		}
+		if info.IsDir() && strings.HasPrefix(to, from+string(filepath.Separator)) {
+			return c.Status(fiber.StatusBadRequest).SendString("Cannot move a directory into itself: " + item.From)
+		}
+		if _, err := os.Stat(to); !os.IsNotExist(err) {
+			return c.Status(fiber.StatusConflict).SendString("Item already exists: " + item.To)
+		}
+		if targets[to] {
+			return c.Status(fiber.StatusConflict).SendString("Duplicate destination: " + item.To)
+		}
+
+		targets[to] = true
+		moves = append(moves, move{from, to})
+	}
+
+	results := make([]structs.FileEntry, 0, len(moves))
+	for _, m := range moves {
+		if err := os.MkdirAll(filepath.Dir(m.to), os.ModePerm); err != nil {
+			zap.L().Error("Error creating directory", zap.String("path", filepath.Dir(m.to)), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to create directory")
+		}
+
+		if err := os.Rename(m.from, m.to); err != nil {
+			zap.L().Error("Error moving item", zap.String("from", m.from), zap.String("to", m.to), zap.Error(err))
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to move: " + filepath.Base(m.from))
+		}
+
+		zap.L().Info("Item moved", zap.String("from", m.from), zap.String("to", m.to))
+
+		info, err := os.Stat(m.to)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to get file info")
+		}
+
+		rel, _ := filepath.Rel(config.AppEnv.UserDataPath, m.to)
+		results = append(results, structs.FileEntry{
+			Name:         filepath.Base(m.to),
+			Path:         filepath.ToSlash(filepath.Join("/UserData", rel)),
+			IsDir:        info.IsDir(),
+			Size:         utils.GetSizeIfFile(info),
+			LastModified: info.ModTime().UTC(),
+		})
+	}
+
+	return c.JSON(results)
+}
